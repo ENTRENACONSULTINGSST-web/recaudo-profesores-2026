@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>OPAL APP - Control de Pagos</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0a0a;
+            color: white;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            padding: 20px;
+            margin: 0;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: auto;
+        }
+        
+        /* Encabezado */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #00ffa3;
+        }
+        
+        h1 {
+            color: #00ffa3;
+            margin: 0;
+            font-size: 1.8rem;
+        }
+        
+        .fecha-limite {
+            background: #ff6b6b;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        
+        /* Tarjetas */
+        .tarjetas {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .tarjeta {
+            background: #1e1e1e;
+            border-radius: 20px;
+            padding: 25px;
+            text-align: center;
+            border: 1px solid #333;
+        }
+        
+        .tarjeta h3 {
+            color: #888;
+            margin: 0 0 10px 0;
+            font-size: 1rem;
+        }
+        
+        .tarjeta .valor {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #00ffa3;
+        }
+        
+        .tarjeta .sub {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 10px;
+        }
+        
+        .editar-meta {
+            background: none;
+            border: 1px solid #00ffa3;
+            color: #00ffa3;
+            padding: 5px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        
+        /* Grid de dos columnas */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        /* Formulario */
+        .panel {
+            background: #1e1e1e;
+            border-radius: 20px;
+            padding: 20px;
+        }
+        
+        .panel h3 {
+            margin-top: 0;
+            color: #00ffa3;
+            border-left: 4px solid #00ffa3;
+            padding-left: 10px;
+        }
+        
+        input, select, button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 10px;
+            border: none;
+            font-size: 16px;
+        }
+        
+        input, select {
+            background: #2a2a2a;
+            color: white;
+        }
+        
+        button {
+            background: #00ffa3;
+            color: black;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        
+        button:hover {
+            opacity: 0.8;
+        }
+        
+        .btn-excel {
+            background: #2196F3;
+            color: white;
+            margin-top: 10px;
+        }
+        
+        .qr-area {
+            text-align: center;
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 15px;
+            margin-top: 15px;
+        }
+        
+        .qr-img {
+            max-width: 200px;
+            margin: 10px auto;
+            display: block;
+        }
+        
+        .qr-placeholder {
+            background: #333;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            color: #888;
+        }
+        
+        /* Tabla historial */
+        .tabla-container {
+            overflow-x: auto;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+        
+        th {
+            background: #00ffa3;
+            color: black;
+            position: sticky;
+            top: 0;
+        }
+        
+        .btn-eliminar {
+            background: #f44336;
+            color: white;
+            padding: 5px 10px;
+            font-size: 12px;
+            margin: 0;
+        }
+        
+        /* Quién falta */
+        .quien-falta {
+            background: #1e1e1e;
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .lista-faltantes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .badge-faltante {
+            background: #f44336;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        
+        .sin-faltantes {
+            color: #00ffa3;
+        }
+        
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            .tarjeta .valor {
+                font-size: 1.8rem;
+            }
+        }
+        
+        .advertencia {
+            background: #f44336;
+            padding: 10px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>💰 OPAL APP - Control de Pagos</h1>
+        <div class="fecha-limite">📅 Fecha Límite: 14 de Mayo</div>
+    </div>
+    
+    <div id="advertenciaFecha" class="advertencia" style="display: none;">
+        ⚠️ ATENCIÓN: La fecha límite (14 de Mayo) ha pasado. No se pueden registrar nuevos pagos.
+    </div>
+    
+    <div class="tarjetas">
+        <div class="tarjeta">
+            <h3>RECAUDADO</h3>
+            <div class="valor" id="recaudado">$0</div>
+            <div class="sub">Total donado</div>
+        </div>
+        <div class="tarjeta">
+            <h3>AVANCE GLOBAL</h3>
+            <div class="valor" id="avance">0%</div>
+            <div class="sub">Meta: <span id="metaMostrada">$0</span></div>
+            <button class="editar-meta" onclick="editarMeta()">✏️ Editar meta por curso</button>
+        </div>
+    </div>
+    
+    <div class="grid-2">
+        <div class="panel">
+            <h3>📝 Registrar Nuevo Pago Manual</h3>
+            <input type="text" id="nombrePagador" placeholder="Nombre del pagador (opcional)">
+            <select id="gradoSelect">
+                <option value="">Selecciona curso</option>
+            </select>
+            <input type="number" id="montoInput" placeholder="Monto $">
+            <button id="btnRegistrar" onclick="registrarDonacion()">Registrar</button>
+            <button class="btn-excel" onclick="descargarExcel()">📥 Descargar Excel</button>
+        </div>
+        
+        <div class="panel">
+            <h3>📱 QR NEQUI</h3>
+            <div id="qrContainer" class="qr-area">
+                <div class="qr-placeholder" id="qrPlaceholder">
+                    🔲 Haz clic para cargar imagen del QR
+                    <input type="file" id="qrInput" accept="image/*" style="margin-top: 10px;">
+                </div>
+                <img id="qrImagen" class="qr-img" style="display: none;">
+            </div>
+        </div>
+    </div>
+    
+    <div class="panel">
+        <h3>📜 Historial de Transacciones</h3>
+        <div class="tabla-container">
+            <table id="tablaHistorial">
+                <thead>
+                    <tr><th>Fecha</th><th>Nombre</th><th>Curso</th><th>Monto</th><th>Acción</th></tr>
+                </thead>
+                <tbody id="historialBody"></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div class="quien-falta">
+        <h3>❓ ¿Quién falta?</h3>
+        <div id="listaFaltantes" class="lista-faltantes"></div>
+    </div>
+</div>
+
+<script>
+    // Lista completa de grados
+    const GRADOS_COMPLETOS = [];
+    
+    for (let letra of ['A', 'B', 'C']) {
+        GRADOS_COMPLETOS.push(`Prejardin ${letra}`);
+        GRADOS_COMPLETOS.push(`Jardin ${letra}`);
+    }
+    for (let letra of ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']) {
+        GRADOS_COMPLETOS.push(`Transicion ${letra}`);
+    }
+    for (let i = 1; i <= 11; i++) {
+        for (let letra of ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']) {
+            GRADOS_COMPLETOS.push(`${i}${letra}`);
+        }
+    }
+    
+    // Configuración
+    let META_POR_CURSO = 20000;
+    const FECHA_LIMITE = new Date(2026, 4, 14); // 14 de Mayo 2026
+    
+    // Inicializar datos
+    function inicializarDatos() {
+        if (!localStorage.getItem('opalDonaciones')) {
+            const donacionesIniciales = {};
+            GRADOS_COMPLETOS.forEach(grado => {
+                donacionesIniciales[grado] = 0;
+            });
+            localStorage.setItem('opalDonaciones', JSON.stringify(donacionesIniciales));
+        }
+        
+        if (!localStorage.getItem('opalHistorial')) {
+            localStorage.setItem('opalHistorial', JSON.stringify([]));
+        }
+        
+        if (!localStorage.getItem('opalMetaPorCurso')) {
+            localStorage.setItem('opalMetaPorCurso', META_POR_CURSO);
+        }
+        
+        META_POR_CURSO = parseInt(localStorage.getItem('opalMetaPorCurso'));
+        actualizarMetaMostrada();
+    }
+    
+    function obtenerDonaciones() {
+        return JSON.parse(localStorage.getItem('opalDonaciones'));
+    }
+    
+    function guardarDonaciones(datos) {
+        localStorage.setItem('opalDonaciones', JSON.stringify(datos));
+    }
+    
+    function obtenerHistorial() {
+        return JSON.parse(localStorage.getItem('opalHistorial'));
+    }
+    
+    function guardarHistorial(historial) {
+        localStorage.setItem('opalHistorial', JSON.stringify(historial));
+    }
+    
+    function fechaLimitePasada() {
+        return new Date() > FECHA_LIMITE;
+    }
+    
+    function registrarDonacion() {
+        if (fechaLimitePasada()) {
+            alert("⚠️ La fecha límite (14 de Mayo) ha pasado. No se pueden registrar nuevos pagos.");
+            return;
+        }
+        
+        const nombre = document.getElementById('nombrePagador').value.trim() || "Anónimo";
+        const grado = document.getElementById('gradoSelect').value;
+        const monto = parseInt(document.getElementById('montoInput').value);
+        
+        if (!grado) {
+            alert("Selecciona un curso");
+            return;
+        }
+        
+        if (!monto || monto <= 0) {
+            alert("Ingresa un monto válido");
+            return;
+        }
+        
+        // Actualizar donaciones
+        const donaciones = obtenerDonaciones();
+        donaciones[grado] += 1;
+        guardarDonaciones(donaciones);
+        
+        // Guardar en historial
+        const historial = obtenerHistorial();
+        const now = new Date();
+        const fechaStr = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes()}`;
+        
+        historial.unshift({
+            fecha: fechaStr,
+            nombre: nombre,
+            curso: grado,
+            monto: monto,
+            id: Date.now()
+        });
+        
+        guardarHistorial(historial);
+        
+        // Limpiar y actualizar
+        document.getElementById('montoInput').value = '';
+        document.getElementById('nombrePagador').value = '';
+        
+        actualizarTodo();
+        mostrarMensaje("✅ Pago registrado correctamente");
+    }
+    
+    function eliminarDonacion(id) {
+        let historial = obtenerHistorial();
+        const donacionEliminada = historial.find(h => h.id === id);
+        
+        if (donacionEliminada) {
+            // Restar del contador del grado
+            const donaciones = obtenerDonaciones();
+            donaciones[donacionEliminada.curso] = Math.max(0, donaciones[donacionEliminada.curso] - 1);
+            guardarDonaciones(donaciones);
+            
+            // Eliminar del historial
+            historial = historial.filter(h => h.id !== id);
+            guardarHistorial(historial);
+            
+            actualizarTodo();
+            mostrarMensaje("🗑️ Donación eliminada");
+        }
+    }
+    
+    function calcularRecaudado() {
+        const historial = obtenerHistorial();
+        return historial.reduce((total, item) => total + item.monto, 0);
+    }
+    
+    function calcularMetaTotal() {
+        return GRADOS_COMPLETOS.length * META_POR_CURSO;
+    }
+    
+    function getGradosSinDonar() {
+        const donaciones = obtenerDonaciones();
+        return GRADOS_COMPLETOS.filter(grado => donaciones[grado] === 0);
+    }
+    
+    function actualizarTodo() {
+        // Recaudado
+        const recaudado = calcularRecaudado();
+        document.getElementById('recaudado').innerHTML = `$${recaudado.toLocaleString()}`;
+        
+        // Avance
+        const metaTotal = calcularMetaTotal();
+        const avance = metaTotal > 0 ? (recaudado / metaTotal) * 100 : 0;
+        document.getElementById('avance').innerHTML = `${avance.toFixed(1)}%`;
+        
+        // Historial
+        const historial = obtenerHistorial();
+        const tbody = document.getElementById('historialBody');
+        tbody.innerHTML = historial.map(item => `
+            <tr>
+                <td>${item.fecha}</td>
+                <td>${item.nombre}</td>
+                <td>${item.curso}</td>
+                <td>$${item.monto.toLocaleString()}</td>
+                <td><button class="btn-eliminar" onclick="eliminarDonacion(${item.id})">Eliminar</button></td>
+            </tr>
+        `).join('');
+        
+        // ¿Quién falta?
+        const faltantes = getGradosSinDonar();
+        const faltantesDiv = document.getElementById('listaFaltantes');
+        if (faltantes.length === 0) {
+            faltantesDiv.innerHTML = '<div class="sin-faltantes">🎉 ¡Todos los cursos han donado! 🎉</div>';
+        } else {
+            faltantesDiv.innerHTML = faltantes.map(grado => `<span class="badge-faltante">${grado}</span>`).join('');
+        }
+        
+        // Select de grados (actualizar contadores)
+        const select = document.getElementById('gradoSelect');
+        if (select.options.length <= 1) {
+            let options = '<option value="">Selecciona curso</option>';
+            for (const grado of GRADOS_COMPLETOS) {
+                options += `<option value="${grado}">${grado}</option>`;
+            }
+            select.innerHTML = options;
+        }
+        
+        // Verificar fecha límite
+        const advertencia = document.getElementById('advertenciaFecha');
+        const btnRegistrar = document.getElementById('btnRegistrar');
+        if (fechaLimitePasada()) {
+            advertencia.style.display = 'block';
+            btnRegistrar.disabled = true;
+            btnRegistrar.style.opacity = '0.5';
+        } else {
+            advertencia.style.display = 'none';
+            btnRegistrar.disabled = false;
+            btnRegistrar.style.opacity = '1';
+        }
+    }
+    
+    function actualizarMetaMostrada() {
+        const metaTotal = calcularMetaTotal();
+        document.getElementById('metaMostrada').innerHTML = `$${metaTotal.toLocaleString()}`;
+        actualizarTodo();
+    }
+    
+    function editarMeta() {
+        const nuevoValor = prompt("Ingrese la meta por curso (en pesos):", META_POR_CURSO);
+        if (nuevoValor && !isNaN(nuevoValor) && parseInt(nuevoValor) > 0) {
+            META_POR_CURSO = parseInt(nuevoValor);
+            localStorage.setItem('opalMetaPorCurso', META_POR_CURSO);
+            actualizarMetaMostrada();
+            mostrarMensaje(`✅ Meta actualizada: $${META_POR_CURSO.toLocaleString()} por curso`);
+        }
+    }
+    
+    function descargarExcel() {
+        const donaciones = obtenerDonaciones();
+        const datosExcel = GRADOS_COMPLETOS.map(grado => ({
+            'Grado': grado,
+            'Cantidad de Pagos': donaciones[grado] || 0
+        }));
+        
+        const ws = XLSX.utils.json_to_sheet(datosExcel);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Donaciones');
+        XLSX.writeFile(wb, `opal_donaciones_${new Date().toISOString().slice(0,10)}.xlsx`);
+        mostrarMensaje("📎 Excel descargado");
+    }
+    
+    function mostrarMensaje(msg) {
+        // Simple alert por ahora
+        console.log(msg);
+    }
+    
+    // QR Image
+    document.getElementById('qrInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = document.getElementById('qrImagen');
+                const placeholder = document.getElementById('qrPlaceholder');
+                img.src = event.target.result;
+                img.style.display = 'block';
+                placeholder.style.display = 'none';
+                localStorage.setItem('opalQR', event.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    function cargarQRGuardado() {
+        const qrGuardado = localStorage.getItem('opalQR');
+        if (qrGuardado) {
+            const img = document.getElementById('qrImagen');
+            const placeholder = document.getElementById('qrPlaceholder');
+            img.src = qrGuardado;
+            img.style.display = 'block';
+            placeholder.style.display = 'none';
+        }
+    }
+    
+    // Inicializar
+    inicializarDatos();
+    cargarQRGuardado();
+    actualizarTodo();
+</script>
+
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+</body>
+</html>
