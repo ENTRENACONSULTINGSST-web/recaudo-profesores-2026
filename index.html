@@ -127,13 +127,32 @@
 </div>
 
 <script>
-    // 1. GENERACIÓN DE GRADOS (Relleno completo)
-    const GRADOS_COMPLETOS = [];
-    ['Prejardin', 'Jardin'].forEach(g => ['A', 'B', 'C'].forEach(l => GRADOS_COMPLETOS.push(`${g} ${l}`)));
-    ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].forEach(l => GRADOS_COMPLETOS.push(`Transicion ${l}`));
-    for (let i = 1; i <= 11; i++) {
-        ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].forEach(l => GRADOS_COMPLETOS.push(`${i}${l}`));
-    }
+    // 1. GENERACIÓN DE GRADOS (Filtrada según requerimiento específico)
+    const GRADOS_COMPLETOS = (function() {
+        let lista = [];
+        // Pj A-C
+        ['A', 'B', 'C'].forEach(l => lista.push(`Prejardin ${l}`));
+        // Jardín A-C
+        ['A', 'B', 'C'].forEach(l => lista.push(`Jardin ${l}`));
+        // Transición A-H
+        ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].forEach(l => lista.push(`Transicion ${l}`));
+        // 1-2 A-I
+        for(let i=1; i<=2; i++) ['A','B','C','D','E','F','G','H','I'].forEach(l => lista.push(`${i}${l}`));
+        // 3 A-J
+        ['A','B','C','D','E','F','G','H','I','J'].forEach(l => lista.push(`3${l}`));
+        // 4 A-G
+        ['A','B','C','D','E','F','G'].forEach(l => lista.push(`4${l}`));
+        // 5-8 A-H (Nota: 8A-G según lista del usuario)
+        for(let i=5; i<=7; i++) ['A','B','C','D','E','F','G','H'].forEach(l => lista.push(`${i}${l}`));
+        ['A','B','C','D','E','F','G'].forEach(l => lista.push(`8${l}`));
+        // 9-11 A-F
+        for(let i=9; i<=11; i++) ['A','B','C','D','E','F'].forEach(l => lista.push(`${i}${l}`));
+
+        // Cursos específicos a retirar de la lista final
+        const EXCLUIR = ["Jardin B", "Transicion A", "1B", "2F", "2H", "3E", "3F", "4E", "5B", "6H", "8A", "10E", "10F"];
+        
+        return lista.filter(grado => !EXCLUIR.includes(grado));
+    })();
     
     // 2. CONFIGURACIÓN Y PERSISTENCIA
     let META_POR_CURSO = parseInt(localStorage.getItem('opalMetaPorCurso')) || 20000;
@@ -150,7 +169,7 @@
         cargarQRGuardado();
     }
 
-    // 3. FUNCIONES DE REGISTRO
+    // 3. FUNCIONES DE REGISTRO CON BLOQUEO DE DUPLICADOS
     function registrarDonacion() {
         if (new Date() > FECHA_LIMITE) return alert("Fecha límite vencida.");
         
@@ -163,6 +182,11 @@
         const historial = JSON.parse(localStorage.getItem('opalHistorial'));
         const donaciones = JSON.parse(localStorage.getItem('opalDonaciones'));
 
+        // VALIDACIÓN: No permitir duplicados por curso
+        if (donaciones[grado] > 0) {
+            return alert(`⚠️ El curso ${grado} ya tiene un pago registrado. No se permiten duplicados.`);
+        }
+
         donaciones[grado] += 1;
         historial.unshift({ fecha: new Date().toLocaleString(), nombre, curso: grado, monto, id: Date.now() });
 
@@ -170,6 +194,7 @@
         localStorage.setItem('opalDonaciones', JSON.stringify(donaciones));
         
         document.getElementById('montoInput').value = '';
+        document.getElementById('nombrePagador').value = '';
         actualizarTodo();
     }
 
@@ -187,7 +212,7 @@
         }
     }
 
-    // 4. EXCEL: IMPORTAR Y DESCARGAR (SUMATORIA INCLUIDA)
+    // 4. EXCEL: IMPORTAR Y DESCARGAR
     function descargarExcel() {
         const historial = JSON.parse(localStorage.getItem('opalHistorial'));
         const reporte = GRADOS_COMPLETOS.map(g => {
@@ -207,29 +232,36 @@
             const data = XLSX.read(e.target.result, { type: 'binary' });
             const json = XLSX.utils.sheet_to_json(data.Sheets[data.SheetNames[1] || data.SheetNames[0]]);
             
-            const nuevoHistorial = json.map(f => ({
-                fecha: f.fecha || f.Fecha || new Date().toLocaleString(),
-                nombre: f.nombre || f.Nombre || "Importado",
-                curso: f.curso || f.Curso,
-                monto: parseInt(f.monto || f.Monto || 0),
-                id: f.id || Date.now() + Math.random()
-            })).filter(f => f.curso);
-
+            let historialExistente = [];
             const nuevasDons = {}; GRADOS_COMPLETOS.forEach(g => nuevasDons[g] = 0);
-            nuevoHistorial.forEach(h => nuevasDons[h.curso]++);
 
-            localStorage.setItem('opalHistorial', JSON.stringify(nuevoHistorial));
+            json.forEach(f => {
+                const curso = f.curso || f.Curso;
+                // Al importar, también evitamos que entren duplicados del mismo curso
+                if (curso && GRADOS_COMPLETOS.includes(curso) && nuevasDons[curso] === 0) {
+                    historialExistente.push({
+                        fecha: f.fecha || f.Fecha || new Date().toLocaleString(),
+                        nombre: f.nombre || f.Nombre || "Importado",
+                        curso: curso,
+                        monto: parseInt(f.monto || f.Monto || 0),
+                        id: f.id || Date.now() + Math.random()
+                    });
+                    nuevasDons[curso] = 1;
+                }
+            });
+
+            localStorage.setItem('opalHistorial', JSON.stringify(historialExistente));
             localStorage.setItem('opalDonaciones', JSON.stringify(nuevasDons));
             actualizarTodo();
-            alert("✅ Respaldo cargado correctamente.");
+            alert("✅ Respaldo cargado. Se filtraron duplicados y cursos no válidos.");
         };
         reader.readAsBinaryString(event.target.files[0]);
     }
 
     // 5. ACTUALIZACIÓN DE INTERFAZ
     function actualizarTodo() {
-        const historial = JSON.parse(localStorage.getItem('opalHistorial'));
-        const donaciones = JSON.parse(localStorage.getItem('opalDonaciones'));
+        const historial = JSON.parse(localStorage.getItem('opalHistorial')) || [];
+        const donaciones = JSON.parse(localStorage.getItem('opalDonaciones')) || {};
         
         const recaudado = historial.reduce((s, i) => s + i.monto, 0);
         const metaTotal = GRADOS_COMPLETOS.length * META_POR_CURSO;
@@ -246,14 +278,18 @@
         `).join('');
 
         // Faltantes
-        const faltantes = GRADOS_COMPLETOS.filter(g => donaciones[g] === 0);
+        const faltantes = GRADOS_COMPLETOS.filter(g => (donaciones[g] || 0) === 0);
         document.getElementById('listaFaltantes').innerHTML = faltantes.map(g => `<span class="badge-faltante">${g}</span>`).join('');
         
-        // Select
+        // Select (Refrescar solo si es necesario)
         const select = document.getElementById('gradoSelect');
-        if(select.options.length <= 1) {
-            GRADOS_COMPLETOS.forEach(g => select.add(new Option(g, g)));
-        }
+        const valorActual = select.value;
+        select.innerHTML = '<option value="">Selecciona curso</option>';
+        GRADOS_COMPLETOS.forEach(g => {
+            const opt = new Option(g, g);
+            if(g === valorActual) opt.selected = true;
+            select.add(opt);
+        });
 
         // Bloqueo Fecha
         const vencido = new Date() > FECHA_LIMITE;
